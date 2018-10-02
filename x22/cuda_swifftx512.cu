@@ -23,55 +23,19 @@ typedef long long swift_int64_t;
 typedef unsigned long long swift_uint64_t;
 
 
-// The size of SWIFFTX input in bytes.
 #define SWIFFTX_INPUT_BLOCK_SIZE 256
-
-// The size of output block in bytes. The compression function of SWIFFT outputs a block of
-// this size (i.e., this is the size of the resulting hash value).
 #define SWIFFTX_OUTPUT_BLOCK_SIZE 65
-
-// In SWIFFTX we work over Z_257, so this is the modulus and the arithmetic is performed modulo
-// this number.
 #define FIELD_SIZE 257
-
-// The size of FFT we use:
 #define N 64
-
 #define EIGHTH_N (N / 8)
-
-// The number of FFTS done on the input.
 #define M (SWIFFTX_INPUT_BLOCK_SIZE / 8)   // 32
-
-// The size of the inner FFT lookup table:
 #define W 8
 
-// Calculates the sum and the difference of two numbers.
-//
-// Parameters:
-// - A: the first operand. After the operation stores the sum of the two operands.
-// - B: the second operand. After the operation stores the difference between the first and the
-//   second operands.
 #define ADD_SUB(A, B) {int temp = (B); B = ((A) - (B)); A = ((A) + (temp));}
-
-// Quickly reduces an integer modulo 257.
-//
-// Parameters:
-// - A: the input.
 #define Q_REDUCE(A) (((A) & 0xff) - ((A) >> 8))
 
-
-// To calculate the intermediate value of the compression function (the first out of two
-// stages), we multiply the k-th bit of x_i by w^[(2i + 1) * k]. {x_i} is the input to the
-// compression function, i is between 0 and 31, x_i is a 64-bit value.
-// One can see the formula for this (intermediate) stage in the SWIFFT FSE 2008 paper --
-// formula (2), section 3, page 6.
 __device__ swift_int16_t fftTable[256 * EIGHTH_N] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 16, -16, 16, -16, 16, -16, 16, -16, 17, -15, 17, -15, 17, -15, 17, -15, 4, 64, -4, -64, 4, 64, -4, -64, 5, 65, -3, -63, 5, 65, -3, -63, 20, 48, 12, -80, 20, 48, 12, -80, 21, 49, 13, -79, 21, 49, 13, -79, 64, 4, -64, -4, 64, 4, -64, -4, 65, 5, -63, -3, 65, 5, -63, -3, 80, -12, -48, -20, 80, -12, -48, -20, 81, -11, -47, -19, 81, -11, -47, -19, 68, 68, -68, -68, 68, 68, -68, -68, 69, 69, -67, -67, 69, 69, -67, -67, 84, 52, -52, -84, 84, 52, -52, -84, 85, 53, -51, -83, 85, 53, -51, -83, 2, 8, 32, 128, -2, -8, -32, -128, 3, 9, 33, -128, -1, -7, -31, -127, 18, -8, 48, 112, 14, -24, -16, 113, 19, -7, 49, 113, 15, -23, -15, 114, 6, 72, 28, 64, 2, 56, -36, 65, 7, 73, 29, 65, 3, 57, -35, 66, 22, 56, 44, 48, 18, 40, -20, 49, 23, 57, 45, 49, 19, 41, -19, 50, 66, 12, -32, 124, 62, -4, -96, 125, 67, 13, -31, 125, 63, -3, -95, 126, 82, -4, -16, 108, 78, -20, -80, 109, 83, -3, -15, 109, 79, -19, -79, 110, 70, 76, -36, 60, 66, 60, -100, 61, 71, 77, -35, 61, 67, 61, -99, 62, 86, 60, -20, 44, 82, 44, -84, 45, 87, 61, -19, 45, 83, 45, -83, 46, 32, -128, -2, 8, -32, 128, 2, -8, 33, -127, -1, 9, -31, -128, 3, -7, 48, 113, 14, -8, -16, 112, 18, -24, 49, 114, 15, -7, -15, 113, 19, -23, 36, -64, -6, -56, -28, -65, -2, -72, 37, -63, -5, -55, -27, -64, -1, -71, 52, -80, 10, -72, -12, -81, 14, -88, 53, -79, 11, -71, -11, -80, 15, -87, 96, -124, -66, 4, 32, -125, -62, -12, 97, -123, -65, 5, 33, -124, -61, -11, 112, 117, -50, -12, 48, 116, -46, -28, 113, 118, -49, -11, 49, 117, -45, -27, 100, -60, -70, -60, 36, -61, -66, -76, 101, -59, -69, -59, 37, -60, -65, -75, 116, -76, -54, -76, 52, -77, -50, -92, 117, -75, -53, -75, 53, -76, -49, -91, 34, -120, 30, -121, -34, 120, -30, 121, 35, -119, 31, -120, -33, 121, -29, 122, 50, 121, 46, 120, -18, 104, -14, 105, 51, 122, 47, 121, -17, 105, -13, 106, 38, -56, 26, 72, -30, -73, -34, 57, 39, -55, 27, 73, -29, -72, -33, 58, 54, -72, 42, 56, -14, -89, -18, 41, 55, -71, 43, 57, -13, -88, -17, 42, 98, -116, -34, -125, 30, 124, -94, 117, 99, -115, -33, -124, 31, 125, -93, 118, 114, 125, -18, 116, 46, 108, -78, 101, 115, 126, -17, 117, 47, 109, -77, 102, 102, -52, -38, 68, 34, -69, -98, 53, 103, -51, -37, 69, 35, -68, -97, 54, 118, -68, -22, 52, 50, -85, -82, 37, 119, -67, -21, 53, 51, -84, -81, 38, 8, -2, -128, 32, -8, 2, 128, -32, 9, -1, -127, 33, -7, 3, -128, -31, 24, -18, -112, 16, 8, -14, -113, -48, 25, -17, -111, 17, 9, -13, -112, -47, 12, 62, 125, -32, -4, 66, 124, -96, 13, 63, 126, -31, -3, 67, 125, -95, 28, 46, -116, -48, 12, 50, -117, -112, 29, 47, -115, -47, 13, 51, -116, -111, 72, 2, 65, 28, 56, 6, 64, -36, 73, 3, 66, 29, 57, 7, 65, -35, 88, -14, 81, 12, 72, -10, 80, -52, 89, -13, 82, 13, 73, -9, 81, -51, 76, 66, 61, -36, 60, 70, 60, -100, 77, 67, 62, -35, 61, 71, 61, -99, 92, 50, 77, -52, 76, 54, 76, -116, 93, 51, 78, -51, 77, 55, 77, -115, 10, 6, -96, -97, -10, -6, 96, 97, 11, 7, -95, -96, -9, -5, 97, 98, 26, -10, -80, -113, 6, -22, 112, 81, 27, -9, -79, -112, 7, -21, 113, 82, 14, 70, -100, 96, -6, 58, 92, 33, 15, 71, -99, 97, -5, 59, 93, 34, 30, 54, -84, 80, 10, 42, 108, 17, 31, 55, -83, 81, 11, 43, 109, 18, 74, 10, 97, -101, 54, -2, 32, 93, 75, 11, 98, -100, 55, -1, 33, 94, 90, -6, 113, -117, 70, -18, 48, 77, 91, -5, 114, -116, 71, -17, 49, 78, 78, 74, 93, 92, 58, 62, 28, 29, 79, 75, 94, 93, 59, 63, 29, 30, 94, 58, 109, 76, 74, 46, 44, 13, 95, 59, 110, 77, 75, 47, 45, 14, 40, 127, 127, 40, -40, -127, -127, -40, 41, 128, 128, 41, -39, -126, -126, -39, 56, 111, -114, 24, -24, 114, -111, -56, 57, 112, -113, 25, -23, 115, -110, -55, 44, -66, 123, -24, -36, -63, 126, -104, 45, -65, 124, -23, -35, -62, 127, -103, 60, -82, -118, -40, -20, -79, -115, -120, 61, -81, -117, -39, -19, -78, -114, -119, 104, -126, 63, 36, 24, -123, 66, -44, 105, -125, 64, 37, 25, -122, 67, -43, 120, 115, 79, 20, 40, 118, 82, -60, 121, 116, 80, 21, 41, 119, 83, -59, 108, -62, 59, -28, 28, -59, 62, -108, 109, -61, 60, -27, 29, -58, 63, -107, 124, -78, 75, -44, 44, -75, 78, -124, 125, -77, 76, -43, 45, -74, 79, -123, 42, -122, -98, -89, -42, 122, 98, 89, 43, -121, -97, -88, -41, 123, 99, 90, 58, 119, -82, -105, -26, 106, 114, 73, 59, 120, -81, -104, -25, 107, 115, 74, 46, -58, -102, 104, -38, -71, 94, 25, 47, -57, -101, 105, -37, -70, 95, 26, 62, -74, -86, 88, -22, -87, 110, 9, 63, -73, -85, 89, -21, -86, 111, 10, 106, -118, 95, -93, 22, 126, 34, 85, 107, -117, 96, -92, 23, 127, 35, 86, 122, 123, 111, -109, 38, 110, 50, 69, 123, 124, 112, -108, 39, 111, 51, 70, 110, -54, 91, 100, 26, -67, 30, 21, 111, -53, 92, 101, 27, -66, 31, 22, 126, -70, 107, 84, 42, -83, 46, 5, 127, -69, 108, 85, 43, -82, 47, 6, 128, 32, 8, 2, -128, -32, -8, -2, -128, 33, 9, 3, -127, -31, -7, -1, -113, 16, 24, -14, -112, -48, 8, -18, -112, 17, 25, -13, -111, -47, 9, -17, -125, 96, 4, -62, -124, 32, -12, -66, -124, 97, 5, -61, -123, 33, -11, -65, -109, 80, 20, -78, -108, 16, 4, -82, -108, 81, 21, -77, -107, 17, 5, -81, -65, 36, -56, -2, -64, -28, -72, -6, -64, 37, -55, -1, -63, -27, -71, -5, -49, 20, -40, -18, -48, -44, -56, -22, -48, 21, -39, -17, -47, -43, -55, -21, -61, 100, -60, -66, -60, 36, -76, -70, -60, 101, -59, -65, -59, 37, -75, -69, -45, 84, -44, -82, -44, 20, -60, -86, -44, 85, -43, -81, -43, 21, -59, -85, -127, 40, 40, -127, 127, -40, -40, 127, -126, 41, 41, -126, 128, -39, -39, 128, -111, 24, 56, 114, -114, -56, -24, 111, -110, 25, 57, 115, -113, -55, -23, 112, -123, 104, 36, 66, -126, 24, -44, 63, -122, 105, 37, 67, -125, 25, -43, 64, -107, 88, 52, 50, -110, 8, -28, 47, -106, 89, 53, 51, -109, 9, -27, 48, -63, 44, -24, 126, -66, -36, -104, 123, -62, 45, -23, 127, -65, -35, -103, 124, -47, 28, -8, 110, -50, -52, -88, 107, -46, 29, -7, 111, -49, -51, -87, 108, -59, 108, -28, 62, -62, 28, -108, 59, -58, 109, -27, 63, -61, 29, -107, 60, -43, 92, -12, 46, -46, 12, -92, 43, -42, 93, -11, 47, -45, 13, -91, 44, -97, -96, 6, 10, 97, 96, -6, -10, -96, -95, 7, 11, 98, 97, -5, -9, -81, -112, 22, -6, 113, 80, 10, -26, -80, -111, 23, -5, 114, 81, 11, -25, -93, -32, 2, -54, 101, -97, -10, -74, -92, -31, 3, -53, 102, -96, -9, -73, -77, -48, 18, -70, 117, -113, 6, -90, -76, -47, 19, -69, 118, -112, 7, -89, -33, -92, -58, 6, -96, 100, -70, -14, -32, -91, -57, 7, -95, 101, -69, -13, -17, -108, -42, -10, -80, 84, -54, -30, -16, -107, -41, -9, -79, 85, -53, -29, -29, -28, -62, -58, -92, -93, -74, -78, -28, -27, -61, -57, -91, -92, -73, -77, -13, -44, -46, -74, -76, -109, -58, -94, -12, -43, -45, -73, -75, -108, -57, -93, -95, -88, 38, -119, 95, 88, -38, 119, -94, -87, 39, -118, 96, 89, -37, 120, -79, -104, 54, 122, 111, 72, -22, 103, -78, -103, 55, 123, 112, 73, -21, 104, -91, -24, 34, 74, 99, -105, -42, 55, -90, -23, 35, 75, 100, -104, -41, 56, -75, -40, 50, 58, 115, -121, -26, 39, -74, -39, 51, 59, 116, -120, -25, 40, -31, -84, -26, -123, -98, 92, -102, 115, -30, -83, -25, -122, -97, 93, -101, 116, -15, -100, -10, 118, -82, 76, -86, 99, -14, -99, -9, 119, -81, 77, -85, 100, -27, -20, -30, 70, -94, -101, -106, 51, -26, -19, -29, 71, -93, -100, -105, 52, -11, -36, -14, 54, -78, -117, -90, 35, -10, -35, -13, 55, -77, -116, -89, 36, -121, 30, -120, 34, 121, -30, 120, -34, -120, 31, -119, 35, 122, -29, 121, -33, -105, 14, -104, 18, -120, -46, -121, -50, -104, 15, -103, 19, -119, -45, -120, -49, -117, 94, -124, -30, 125, 34, 116, -98, -116, 95, -123, -29, 126, 35, 117, -97, -101, 78, -108, -46, -116, 18, -125, -114, -100, 79, -107, -45, -115, 19, -124, -113, -57, 34, 73, 30, -72, -26, 56, -38, -56, 35, 74, 31, -71, -25, 57, -37, -41, 18, 89, 14, -56, -42, 72, -54, -40, 19, 90, 15, -55, -41, 73, -53, -53, 98, 69, -34, -68, 38, 52, -102, -52, 99, 70, -33, -67, 39, 53, -101, -37, 82, 85, -50, -52, 22, 68, -118, -36, 83, 86, -49, -51, 23, 69, -117, -119, 38, -88, -95, 119, -38, 88, 95, -118, 39, -87, -94, 120, -37, 89, 96, -103, 22, -72, -111, -122, -54, 104, 79, -102, 23, -71, -110, -121, -53, 105, 80, -115, 102, -92, 98, 123, 26, 84, 31, -114, 103, -91, 99, 124, 27, 85, 32, -99, 86, -76, 82, -118, 10, 100, 15, -98, 87, -75, 83, -117, 11, 101, 16, -55, 42, 105, -99, -74, -34, 24, 91, -54, 43, 106, -98, -73, -33, 25, 92, -39, 26, 121, -115, -58, -50, 40, 75, -38, 27, 122, -114, -57, -49, 41, 76, -51, 106, 101, 94, -70, 30, 20, 27, -50, 107, 102, 95, -69, 31, 21, 28, -35, 90, 117, 78, -54, 14, 36, 11, -34, 91, 118, 79, -53, 15, 37, 12, -89, -98, -122, 42, 89, 98, 122, -42, -88, -97, -121, 43, 90, 99, 123, -41, -73, -114, -106, 26, 105, 82, -119, -58, -72, -113, -105, 27, 106, 83, -118, -57, -85, -34, -126, -22, 93, -95, 118, -106, -84, -33, -125, -21, 94, -94, 119, -105, -69, -50, -110, -38, 109, -111, -123, -122, -68, -49, -109, -37, 110, -110, -122, -121, -25, -94, 71, 38, -104, 102, 58, -46, -24, -93, 72, 39, -103, 103, 59, -45, -9, -110, 87, 22, -88, 86, 74, -62, -8, -109, 88, 23, -87, 87, 75, -61, -21, -30, 67, -26, -100, -91, 54, -110, -20, -29, 68, -25, -99, -90, 55, -109, -5, -46, 83, -42, -84, -107, 70, -126, -4, -45, 84, -41, -83, -106, 71, -125, -87, -90, -90, -87, 87, 90, 90, 87, -86, -89, -89, -86, 88, 91, 91, 88, -71, -106, -74, -103, 103, 74, 106, 71, -70, -105, -73, -102, 104, 75, 107, 72, -83, -26, -94, 106, 91, -103, 86, 23, -82, -25, -93, 107, 92, -102, 87, 24, -67, -42, -78, 90, 107, -119, 102, 7, -66, -41, -77, 91, 108, -118, 103, 8, -23, -86, 103, -91, -106, 94, 26, 83, -22, -85, 104, -90, -105, 95, 27, 84, -7, -102, 119, -107, -90, 78, 42, 67, -6, -101, 120, -106, -89, 79, 43, 68, -19, -22, 99, 102, -102, -99, 22, 19, -18, -21, 100, 103, -101, -98, 23, 20, -3, -38, 115, 86, -86, -115, 38, 3, -2, -37, 116, 87, -85, -114, 39, 4};
 
-// The A's we use in SWIFFTX shall be random elements of Z_257.
-// We generated these A's from the decimal expansion of PI as follows:  we converted each
-// triple of digits into a decimal number d. If d < (257 * 3) we used (d % 257) for the next A
-// element, otherwise move to the next triple of digits in the expansion. This guarntees that
-// the A's are random, provided that PI digits are.
 __device__ const swift_int16_t As[3 * M * N] =
 {141,  78, 139,  75, 238, 205, 129, 126,  22, 245, 197, 169, 142, 118, 105,  78,
   50, 149,  29, 208, 114,  34,  85, 117,  67, 148,  86, 256,  25,  49, 133,  93,
@@ -458,9 +422,6 @@ __device__ const swift_int16_t As[3 * M * N] =
   43, 104, 148, 203, 189, 204,   4, 182, 169,   1, 134, 122, 141, 202,  13, 187,
  177, 112, 162,  35, 231,   6,   8, 241,  99,   6, 191,  45, 113, 113, 101, 104};
 
-// The S-Box we use for further linearity breaking.
-// We created it by taking the digits of decimal expansion of e.
-// The code that created it can be found in 'ProduceRandomSBox.c'.
 __device__ unsigned char SBox[256] = {
 //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
 0x7d, 0xd1, 0x70, 0x0b, 0xfa, 0x39, 0x18, 0xc3, 0xf3, 0xbb, 0xa7, 0xd4, 0x84, 0x25, 0x3b, 0x3c,   // 0
@@ -490,7 +451,6 @@ __device__ __forceinline__ swift_int16_t TranslateToBase256(swift_int32_t input[
 	#pragma unroll
 	for (i = 0; i < EIGHTH_N; i += 2)
 	{
-		// input[i] + 257 * input[i + 1]
 		pairs[i >> 1] = input[i] + input[i + 1] + (input[i + 1] << 8);
 	}
 
@@ -502,7 +462,6 @@ __device__ __forceinline__ swift_int16_t TranslateToBase256(swift_int32_t input[
 		#pragma unroll
 		for (j = i - 1; j < (EIGHTH_N / 2) - 1; ++j)
 		{
-			// pairs[j + 1] * 513, because 257^2 = 513 % 256^2.
 			swift_int32_t temp = pairs[j] + pairs[j + 1] + (pairs[j + 1] << 9);
 			pairs[j] = temp & 0xffff;
 			pairs[j + 1] += (temp >> 16);
@@ -512,10 +471,6 @@ __device__ __forceinline__ swift_int16_t TranslateToBase256(swift_int32_t input[
 	#pragma unroll
 	for (i = 0; i < EIGHTH_N; i += 2)
 	{
-		/*
-		output[i] = (unsigned char) (pairs[i >> 1] & 0xff);
-		output[i + 1] = (unsigned char) ((pairs[i >> 1] >> 8) & 0xff);
-		*/
 		output[i] = BYTE(pairs[i >> 1], 0);
 		output[i + 1] = BYTE(pairs[i >> 1], 1);
 	}
@@ -528,51 +483,6 @@ void h_InitializeSWIFFTX() {
 
 __device__ __forceinline__ void FFT(const unsigned char input[EIGHTH_N], swift_int32_t *output)
 {
-	/*
-	swift_int32_t F[64];
-	swift_int16_t *table;
-
-	#pragma unroll 1
-	for (int i = 0; i < 8; i++) {
-		table = &(fftTable[input[i] << 3]);
-		#pragma unroll
-		for (int j = 0; j < 8; j++) {
-			F[j * 8 + i] = multipliers[j] * table[j];
-		}
-		mult += 8;
-	}
-
-	#pragma unroll 1
-	for (int i = 0; i < 8; i++) {
-		ADD_SUB(F[i * 8 + 0], F[i * 8 + 1]);
-		ADD_SUB(F[i * 8 + 2], F[i * 8 + 3]);
-		ADD_SUB(F[i * 8 + 4], F[i * 8 + 5]);
-		ADD_SUB(F[i * 8 + 6], F[i * 8 + 7]);
-
-		F[i * 8 + 3] <<= 4;
-		F[i * 8 + 7] <<= 4;
-
-		ADD_SUB(F[i * 8 + 0], F[i * 8 + 2]);
-		ADD_SUB(F[i * 8 + 1], F[i * 8 + 3]);
-		ADD_SUB(F[i * 8 + 4], F[i * 8 + 5]);
-		ADD_SUB(F[i * 8 + 6], F[i * 8 + 7]);
-
-		F[i * 8 + 5] <<= 2;
-		F[i * 8 + 6] <<= 4;
-		F[i * 8 + 7] <<= 6;
-
-		ADD_SUB(F[i * 8 + 0], F[i * 8 + 4]);
-		ADD_SUB(F[i * 8 + 1], F[i * 8 + 5]);
-		ADD_SUB(F[i * 8 + 2], F[i * 8 + 6]);
-		ADD_SUB(F[i * 8 + 3], F[i * 8 + 7]);
-
-		#pragma unroll 1
-		for (int j = 0; j < 8; j++) {
-			output[j * 8 + i] = Q_REDUCE(F[i * 8 + j]);
-		}
-	}
-	*/
-
 	swift_int32_t F0, F1, F2, F3, F4, F5, F6, F7, F8, F9,
 					 F10, F11, F12, F13, F14, F15, F16, F17, F18, F19,
 					 F20, F21, F22, F23, F24, F25, F26, F27, F28, F29,
@@ -928,15 +838,7 @@ __device__ __forceinline__ void FFT(const unsigned char input[EIGHTH_N], swift_i
 	output[63] = Q_REDUCE(F63);
 }
 
-// Calculates the FFT part of SWIFFT.
-// We divided the SWIFFT calculation into two, because that way we could save 2 computations of
-// the FFT part, since in the first stage of SWIFFTX the difference between the first 3 SWIFFTs
-// is only the A's part.
-//
-// Parameters:
-// - input: the input to FFT.
-// - m: the input size divided by 8. The function performs m FFTs.
-// - output: will store the result.
+
 __device__ __forceinline__ void SWIFFTFFT(const unsigned char *input, int m, swift_int32_t *output)
 {
 	int i;
@@ -949,59 +851,6 @@ __device__ __forceinline__ void SWIFFTFFT(const unsigned char *input, int m, swi
 	for (i = 1; i < m - 1; i++, input += EIGHTH_N, output += N) FFT(input, output);
 
 	FFT(input, output);
-}
-
-// Calculates the 'sum' part of SWIFFT, including the base change at the end.
-// We divided the SWIFFT calculation into two, because that way we could save 2 computations of
-// the FFT part, since in the first stage of SWIFFTX the difference between the first 3 SWIFFTs
-// is only the A's part.
-//
-// Parameters:
-// - input: the input. Of size 64 * m.
-// - m: the input size divided by 64.
-// - output: will store the result.
-// - a: the coefficients in the sum. Of size 64 * m.
-__device__ __forceinline__ void SWIFFTSum1(const swift_int32_t *input, unsigned char *output, const swift_int16_t *a)
-{
-	int i, j;
-	swift_int32_t result[8];
-	swift_int16_t carry = 0;
-
-	#pragma unroll 1
-	for (j = 0; j < N; ++j)
-	{
-		swift_int32_t sum = 0;
-		#pragma unroll
-		for (i = 0; i < M; i++) sum += input[j + i * N] * __ldg(&a[j + i * N]);
-
-		result[j % 8] = ((FIELD_SIZE << 22) + sum) % FIELD_SIZE;
-		if (j % 8 == 7) {
-			int carryBit = TranslateToBase256(result, output + ((j / 8) << 3));
-			carry |= carryBit << j;
-		}
-	}
-
-	output[N] = carry;
-}
-
-
-__device__ __forceinline__ void SWIFFTSum2(const swift_int32_t *input, unsigned char *output, const swift_int16_t *a)
-{
-	int i, j;
-	swift_int32_t result[8];
-
-	#pragma unroll 1
-	for (j = 0; j < N; ++j)
-	{
-		swift_int32_t sum = 0;
-		#pragma unroll
-		for (i = 0; i < 3 * (N/8) + 1; i++) sum += input[j + i * N] * __ldg(&a[j + i * N]);
-
-		result[j % 8] = ((FIELD_SIZE << 22) + sum) % FIELD_SIZE;
-		if (j % 8 == 7) {
-			TranslateToBase256(result, output + ((j / 8) << 3));
-		}
-	}
 }
 
 
@@ -1043,72 +892,42 @@ __device__ void SWIFFTSum(const swift_int32_t *input, int m, unsigned char *outp
 __device__ __forceinline__ void ComputeSingleSWIFFTX(unsigned char input[SWIFFTX_INPUT_BLOCK_SIZE], unsigned char output[SWIFFTX_OUTPUT_BLOCK_SIZE], unsigned char S_SBox[256])
 {
 	int i;
-	// Will store the result of the FFT parts:
 	swift_int32_t fftOut[N * M];
 	unsigned char intermediate[N * 3 + 8];
 	unsigned char carry[3];
 
-	// Do the three SWIFFTS while remembering the three carry bytes (each carry byte gets
-	// overriden by the following SWIFFT):
-
-	// 1. Compute the FFT of the input - the common part for the first 3 SWIFFTs:
 	SWIFFTFFT(input, M, fftOut);
-
-	// 2. Compute the sums of the 3 SWIFFTs, each using a different set of coefficients:
-
-	/*
-	// 2a. The first SWIFFT:
-	//SWIFFTSum1(fftOut, intermediate, As);
-	SWIFFTSum(fftOut, M, intermediate, As);
-	// Remember the carry byte:
-	intermediate[3 * N] = intermediate[N];
-
-	// 2b. The second one:
-	//SWIFFTSum1(fftOut, intermediate + N, As + (M * N));
-	SWIFFTSum(fftOut, M, intermediate + N, As + (M * N));
-	intermediate[(3 * N) + 1] = intermediate[2 * N];
-
-	// 2c. The third one:
-	//SWIFFTSum1(fftOut, intermediate + (2 * N), As + 2 * (M * N));
-	SWIFFTSum(fftOut, M, intermediate + (2 * N), As + 2 * (M * N));
-	intermediate[(3 * N) + 2] = intermediate[3 * N];
-	*/
 
 	#pragma unroll 1
 	for (int r = 0; r < 3; r++) {
 		SWIFFTSum(fftOut, M, intermediate + (r * N), As + r * (M * N));
-		//SWIFFTSum1(fftOut, intermediate + (r * N), As + r * (M * N));
 		carry[r] = intermediate[(r + 1) * N];
 	}
 
-	//2d. Put three carry bytes in their place
 	intermediate[3 * N] = carry[0];
 	intermediate[(3 * N) + 1] = carry[1];
 	intermediate[(3 * N) + 2] = carry[2];
 
-	// Apply the S-Box:
 	__syncthreads();
-	#pragma unroll 1
+	#pragma unroll
 	for (i = 0; i < (3 * N) + 3; ++i) intermediate[i] = S_SBox[intermediate[i]];
 
-	// Padding  intermediate output with 5 zeroes.
 	#pragma unroll
 	for (i = (3 * N) + 3; i < (3 * N) + 8; ++i) intermediate[i] = 0x7d;
 
-	// 3. The final and last SWIFFT:
 	SWIFFTFFT(intermediate, 3 * (N/8) + 1, fftOut);
 	SWIFFTSum(fftOut,       3 * (N/8) + 1, output, As);
-	//SWIFFTSum2(fftOut, output, As);
 }
 
 
-
-
-__global__ void __launch_bounds__(256,2) swifftx512_gpu_hash_64(int threads, uint32_t *g_hash, uint32_t *g_hash1, uint32_t *g_hash2, uint32_t *g_hash3)
+__global__ void __launch_bounds__(128,3) swifftx512_gpu_hash_64(int threads, uint32_t *g_hash, uint32_t *g_hash1, uint32_t *g_hash2, uint32_t *g_hash3)
 {
 	int thread = (blockDim.x * blockIdx.x + threadIdx.x);
 	__shared__ unsigned char S_SBox[256];
-	S_SBox[threadIdx.x] = SBox[threadIdx.x];
+	if (threadIdx.x < 128) {
+		S_SBox[threadIdx.x] = SBox[threadIdx.x];
+		S_SBox[threadIdx.x + 128] = SBox[threadIdx.x + 128];
+	}
 
 	if (thread < threads) {
     uint32_t in[64];
@@ -1134,7 +953,7 @@ __global__ void __launch_bounds__(256,2) swifftx512_gpu_hash_64(int threads, uin
 
 
 __host__ void swifftx512_cpu_hash_64(int thr_id, int threads, uint32_t *d_hash, uint32_t *d_hash1, uint32_t *d_hash2, uint32_t *d_hash3) {
-	const int threadsperblock = 256;
+	const int threadsperblock = 128;
 	dim3 grid(threads/threadsperblock);
 	dim3 block(threadsperblock);
 	swifftx512_gpu_hash_64<<<grid, block>>>(threads, d_hash, d_hash1, d_hash2, d_hash3);
