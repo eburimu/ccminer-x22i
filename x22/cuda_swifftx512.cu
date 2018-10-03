@@ -871,12 +871,7 @@ __device__ void SWIFFTSum(const swift_int32_t *input, int m, unsigned char *outp
 			sum += (*f) * (*k);
 		}
 
-		result[j] = sum;
-	}
-
-	for (j = 0; j < N; ++j)
-	{
-		result[j] = ((FIELD_SIZE << 22) + result[j]) % FIELD_SIZE;
+		result[j] = ((FIELD_SIZE << 22) + sum) % FIELD_SIZE;
 	}
 
 	for (j = 0; j < 8; ++j)
