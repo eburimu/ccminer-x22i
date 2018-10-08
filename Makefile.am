@@ -74,7 +74,7 @@ ccminer_SOURCES	= elist.h miner.h compat.h \
 			  x15/x14.cu x15/x15.cu x15/cuda_x14_shabal512.cu x15/cuda_x15_whirlpool.cu \
 			  x15/whirlpool.cu x15/cuda_x15_whirlpool_sm3.cu \
 			  x17/x17.cu x17/hmq17.cu x17/cuda_x17_haval256.cu x17/cuda_x17_sha512.cu \
-			  x22/x22i.cu x22/cuda_sha256.cu x22/cuda_tiger192.cu x22/cuda_swifftx512.cu SWIFFTX/SWIFFTX.c\
+			  x22/x22i.cu x22/cuda_sha256_2.cu x22/cuda_tiger192.cu x22/cuda_swifftx512.cu SWIFFTX/SWIFFTX.c\
 			  x11/c11.cu x11/s3.cu x11/sib.cu x11/veltor.cu x11/cuda_streebog.cu
 
 # scrypt
