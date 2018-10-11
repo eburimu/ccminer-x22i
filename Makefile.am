@@ -68,13 +68,15 @@ ccminer_SOURCES	= elist.h miner.h compat.h \
 			  qubit/qubit.cu qubit/qubit_luffa512.cu qubit/deep.cu qubit/luffa.cu \
 			  tribus.cu \
 			  x11/x11.cu x11/fresh.cu x11/cuda_x11_luffa512.cu x11/cuda_x11_cubehash512.cu \
-			  x11/cuda_x11_shavite512.cu x11/cuda_x11_simd512.cu x11/cuda_x11_echo.cu \
+			  x11/cuda_x11_shavite512.cu x11/cuda_x11_shavite512_sp.cu x11/cuda_x11_simd512.cu \
+			  x11/cuda_x11_echo.cu x11/cuda_x11_echo_sp.cu \
 			  x11/cuda_x11_luffa512_Cubehash.cu x11/x11evo.cu x11/timetravel.cu x11/bitcore.cu \
-			  x13/x13.cu x13/cuda_x13_hamsi512.cu x13/cuda_x13_fugue512.cu \
-			  x15/x14.cu x15/x15.cu x15/cuda_x14_shabal512.cu x15/cuda_x15_whirlpool.cu \
-			  x15/whirlpool.cu x15/cuda_x15_whirlpool_sm3.cu \
+			  x13/x13.cu x13/cuda_x13_hamsi512.cu x13/cuda_x13_hamsi512_sp.cu \
+			  x13/cuda_x13_fugue512.cu x13/cuda_x13_fugue512_sp.cu \
+			  x15/x14.cu x15/x15.cu x15/cuda_x14_shabal512.cu x15/cuda_x14_shabal512_sp.cu \
+			  x15/cuda_x15_whirlpool.cu x15/whirlpool.cu x15/cuda_x15_whirlpool_sm3.cu \
 			  x17/x17.cu x17/hmq17.cu x17/cuda_x17_haval256.cu x17/cuda_x17_sha512.cu \
-			  x22/x22i.cu x22/cuda_sha256.cu x22/cuda_tiger192.cu x22/cuda_swifftx512.cu SWIFFTX/SWIFFTX.c\
+			  x22/x22i.cu x22/cuda_sha256_2.cu x22/cuda_tiger192.cu x22/cuda_swifftx512.cu SWIFFTX/SWIFFTX.c\
 			  x11/c11.cu x11/s3.cu x11/sib.cu x11/veltor.cu x11/cuda_streebog.cu
 
 # scrypt
