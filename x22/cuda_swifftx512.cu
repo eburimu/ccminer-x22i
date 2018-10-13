@@ -443,513 +443,508 @@ __device__ unsigned char SBox[256] = {
 
 #define BYTE(x, n) __byte_perm(x, 0, 0x4440 + (n))
 
-__device__ __forceinline__ swift_int16_t TranslateToBase256(swift_int32_t input[EIGHTH_N], unsigned char output[EIGHTH_N])
-{
-	swift_int32_t pairs[EIGHTH_N / 2];
-	int i;
+__device__ __forceinline__ swift_int16_t
+TranslateToBase256(swift_int32_t input[EIGHTH_N], unsigned char output[EIGHTH_N]) {
+  swift_int32_t pairs[EIGHTH_N / 2];
+  int i;
 
-	#pragma unroll
-	for (i = 0; i < EIGHTH_N; i += 2)
-	{
-		pairs[i >> 1] = input[i] + input[i + 1] + (input[i + 1] << 8);
-	}
+#pragma unroll
+  for (i = 0; i < EIGHTH_N; i += 2) {
+    pairs[i >> 1] = input[i] + input[i + 1] + (input[i + 1] << 8);
+  }
 
-	#pragma unroll
-	for (i = (EIGHTH_N / 2) - 1; i > 0; --i)
-	{
-		int j;
+#pragma unroll
+  for (i = (EIGHTH_N / 2) - 1; i > 0; --i) {
+    int j;
+    
+#pragma unroll
+    for (j = i - 1; j < (EIGHTH_N / 2) - 1; ++j) {
+      swift_int32_t temp = pairs[j] + pairs[j + 1] + (pairs[j + 1] << 9);
+      pairs[j] = temp & 0xffff;
+      pairs[j + 1] += (temp >> 16);
+    }
+  }
 
-		#pragma unroll
-		for (j = i - 1; j < (EIGHTH_N / 2) - 1; ++j)
-		{
-			swift_int32_t temp = pairs[j] + pairs[j + 1] + (pairs[j + 1] << 9);
-			pairs[j] = temp & 0xffff;
-			pairs[j + 1] += (temp >> 16);
-		}
-	}
+#pragma unroll
+  for (i = 0; i < EIGHTH_N; i += 2) {
+    output[i] = BYTE(pairs[i >> 1], 0);
+    output[i + 1] = BYTE(pairs[i >> 1], 1);
+  }
 
-	#pragma unroll
-	for (i = 0; i < EIGHTH_N; i += 2)
-	{
-		output[i] = BYTE(pairs[i >> 1], 0);
-		output[i + 1] = BYTE(pairs[i >> 1], 1);
-	}
-
-	return (pairs[EIGHTH_N/2 - 1] >> 16);
+  return (pairs[EIGHTH_N/2 - 1] >> 16);
 }
 
 void h_InitializeSWIFFTX() {
 }
 
-__device__ __forceinline__ void FFT(const unsigned char input[EIGHTH_N], swift_int32_t *output)
-{
-	swift_int32_t F0, F1, F2, F3, F4, F5, F6, F7, F8, F9,
-					 F10, F11, F12, F13, F14, F15, F16, F17, F18, F19,
-					 F20, F21, F22, F23, F24, F25, F26, F27, F28, F29,
-					 F30, F31, F32, F33, F34, F35, F36, F37, F38, F39,
-					 F40, F41, F42, F43, F44, F45, F46, F47, F48, F49,
-					 F50, F51, F52, F53, F54, F55, F56, F57, F58, F59,
-					 F60, F61, F62, F63;
-
-	// First loop unrolling:
-	swift_int16_t *table = &(fftTable[input[0] << 3]);
-
-	F0  = table[0];
-	F8  = table[1];
-	F16 = table[2];
-	F24 = table[3];
-	F32 = table[4];
-	F40 = table[5];
-	F48 = table[6];
-	F56 = table[7];
-
-	table = &(fftTable[input[1] << 3]);
-
-	F1  = -60  * table[0];
-	F9  = -120 * table[1];
-	F17 = 17   * table[2];
-	F25 = 34   * table[3];
-	F33 = 68   * table[4];
-	F41 = -121 * table[5];
-	F49 = 15   * table[6];
-	F57 = 30   * table[7];
-
-	table = &(fftTable[input[2] << 3]);
-
-	F2  = -35  * table[0];
-	F10 = 44   * table[1];
-	F18 = -70  * table[2];
-	F26 = 88   * table[3];
-	F34 = 117  * table[4];
-	F42 = -81  * table[5];
-	F50 = -23  * table[6];
-	F58 = 95   * table[7];
-
-	table = &(fftTable[input[3] << 3]);
-
-	F3  = 44   * table[0];
-	F11 = 117  * table[1];
-	F19 = 95   * table[2];
-	F27 = -92  * table[3];
-	F35 = -11  * table[4];
-	F43 = 35   * table[5];
-	F51 = -88  * table[6];
-	F59 = 23   * table[7];
-
-	table = &(fftTable[input[4] << 3]);
-
-	F4  = 42   * table[0];
-	F12 = 72   * table[1];
-	F20 = 50   * table[2];
-	F28 = 49   * table[3];
-	F36 = 84   * table[4];
-	F44 = -113 * table[5];
-	F52 = 100  * table[6];
-	F60 = 98   * table[7];
-
-	table = &(fftTable[input[5] << 3]);
-
-	F5  = 50   * table[0];
-	F13 = 98   * table[1];
-	F21 = 79   * table[2];
-	F29 = 124  * table[3];
-	F37 = 58   * table[4];
-	F45 = 52   * table[5];
-	F53 = -42  * table[6];
-	F61 = 113  * table[7];
-
-	table = &(fftTable[input[6] << 3]);
-
-	F6  = 72   * table[0];
-	F14 = 84   * table[1];
-	F22 = 98   * table[2];
-	F30 = -57  * table[3];
-	F38 = 62   * table[4];
-	F46 = -99  * table[5];
-	F54 = 13   * table[6];
-	F62 = 58   * table[7];
-
-	table = &(fftTable[input[7] << 3]);
-
-	F7  = 49   * table[0];
-	F15 = -57  * table[1];
-	F23 = 124  * table[2];
-	F31 = 118  * table[3];
-	F39 = 104  * table[4];
-	F47 = -100 * table[5];
-	F55 = -62  * table[6];
-	F63 = -59  * table[7];
-
-	// Second loop unrolling:
-	// Iteration 0:
-	ADD_SUB(F0, F1);
-	ADD_SUB(F2, F3);
-	ADD_SUB(F4, F5);
-	ADD_SUB(F6, F7);
-
-	F3 <<= 4;
-	F7 <<= 4;
-
-	ADD_SUB(F0, F2);
-	ADD_SUB(F1, F3);
-	ADD_SUB(F4, F6);
-	ADD_SUB(F5, F7);
-
-	F5 <<= 2;
-	F6 <<= 4;
-	F7 <<= 6;
-
-	ADD_SUB(F0, F4);
-	ADD_SUB(F1, F5);
-	ADD_SUB(F2, F6);
-	ADD_SUB(F3, F7);
-
-	output[0] = Q_REDUCE(F0);
-	output[8] = Q_REDUCE(F1);
-	output[16] = Q_REDUCE(F2);
-	output[24] = Q_REDUCE(F3);
-	output[32] = Q_REDUCE(F4);
-	output[40] = Q_REDUCE(F5);
-	output[48] = Q_REDUCE(F6);
-	output[56] = Q_REDUCE(F7);
-
-	// Iteration 1:
-	ADD_SUB(F8, F9);
-	ADD_SUB(F10, F11);
-	ADD_SUB(F12, F13);
-	ADD_SUB(F14, F15);
-
-	F11 <<= 4;
-	F15 <<= 4;
-
-	ADD_SUB(F8, F10);
-	ADD_SUB(F9, F11);
-	ADD_SUB(F12, F14);
-	ADD_SUB(F13, F15);
-
-	F13 <<= 2;
-	F14 <<= 4;
-	F15 <<= 6;
-
-	ADD_SUB(F8, F12);
-	ADD_SUB(F9, F13);
-	ADD_SUB(F10, F14);
-	ADD_SUB(F11, F15);
-
-	output[1] = Q_REDUCE(F8);
-	output[9] = Q_REDUCE(F9);
-	output[17] = Q_REDUCE(F10);
-	output[25] = Q_REDUCE(F11);
-	output[33] = Q_REDUCE(F12);
-	output[41] = Q_REDUCE(F13);
-	output[49] = Q_REDUCE(F14);
-	output[57] = Q_REDUCE(F15);
-
-	// Iteration 2:
-	ADD_SUB(F16, F17);
-	ADD_SUB(F18, F19);
-	ADD_SUB(F20, F21);
-	ADD_SUB(F22, F23);
-
-	F19 <<= 4;
-	F23 <<= 4;
-
-	ADD_SUB(F16, F18);
-	ADD_SUB(F17, F19);
-	ADD_SUB(F20, F22);
-	ADD_SUB(F21, F23);
-
-	F21 <<= 2;
-	F22 <<= 4;
-	F23 <<= 6;
-
-	ADD_SUB(F16, F20);
-	ADD_SUB(F17, F21);
-	ADD_SUB(F18, F22);
-	ADD_SUB(F19, F23);
-
-	output[2] = Q_REDUCE(F16);
-	output[10] = Q_REDUCE(F17);
-	output[18] = Q_REDUCE(F18);
-	output[26] = Q_REDUCE(F19);
-	output[34] = Q_REDUCE(F20);
-	output[42] = Q_REDUCE(F21);
-	output[50] = Q_REDUCE(F22);
-	output[58] = Q_REDUCE(F23);
-
-	// Iteration 3:
-	ADD_SUB(F24, F25);
-	ADD_SUB(F26, F27);
-	ADD_SUB(F28, F29);
-	ADD_SUB(F30, F31);
-
-	F27 <<= 4;
-	F31 <<= 4;
-
-	ADD_SUB(F24, F26);
-	ADD_SUB(F25, F27);
-	ADD_SUB(F28, F30);
-	ADD_SUB(F29, F31);
-
-	F29 <<= 2;
-	F30 <<= 4;
-	F31 <<= 6;
-
-	ADD_SUB(F24, F28);
-	ADD_SUB(F25, F29);
-	ADD_SUB(F26, F30);
-	ADD_SUB(F27, F31);
-
-	output[3] = Q_REDUCE(F24);
-	output[11] = Q_REDUCE(F25);
-	output[19] = Q_REDUCE(F26);
-	output[27] = Q_REDUCE(F27);
-	output[35] = Q_REDUCE(F28);
-	output[43] = Q_REDUCE(F29);
-	output[51] = Q_REDUCE(F30);
-	output[59] = Q_REDUCE(F31);
-
-	// Iteration 4:
-	ADD_SUB(F32, F33);
-	ADD_SUB(F34, F35);
-	ADD_SUB(F36, F37);
-	ADD_SUB(F38, F39);
-
-	F35 <<= 4;
-	F39 <<= 4;
-
-	ADD_SUB(F32, F34);
-	ADD_SUB(F33, F35);
-	ADD_SUB(F36, F38);
-	ADD_SUB(F37, F39);
-
-	F37 <<= 2;
-	F38 <<= 4;
-	F39 <<= 6;
-
-	ADD_SUB(F32, F36);
-	ADD_SUB(F33, F37);
-	ADD_SUB(F34, F38);
-	ADD_SUB(F35, F39);
-
-	output[4] = Q_REDUCE(F32);
-	output[12] = Q_REDUCE(F33);
-	output[20] = Q_REDUCE(F34);
-	output[28] = Q_REDUCE(F35);
-	output[36] = Q_REDUCE(F36);
-	output[44] = Q_REDUCE(F37);
-	output[52] = Q_REDUCE(F38);
-	output[60] = Q_REDUCE(F39);
-
-	// Iteration 5:
-	ADD_SUB(F40, F41);
-	ADD_SUB(F42, F43);
-	ADD_SUB(F44, F45);
-	ADD_SUB(F46, F47);
-
-	F43 <<= 4;
-	F47 <<= 4;
-
-	ADD_SUB(F40, F42);
-	ADD_SUB(F41, F43);
-	ADD_SUB(F44, F46);
-	ADD_SUB(F45, F47);
-
-	F45 <<= 2;
-	F46 <<= 4;
-	F47 <<= 6;
-
-	ADD_SUB(F40, F44);
-	ADD_SUB(F41, F45);
-	ADD_SUB(F42, F46);
-	ADD_SUB(F43, F47);
-
-	output[5] = Q_REDUCE(F40);
-	output[13] = Q_REDUCE(F41);
-	output[21] = Q_REDUCE(F42);
-	output[29] = Q_REDUCE(F43);
-	output[37] = Q_REDUCE(F44);
-	output[45] = Q_REDUCE(F45);
-	output[53] = Q_REDUCE(F46);
-	output[61] = Q_REDUCE(F47);
-
-	// Iteration 6:
-	ADD_SUB(F48, F49);
-	ADD_SUB(F50, F51);
-	ADD_SUB(F52, F53);
-	ADD_SUB(F54, F55);
-
-	F51 <<= 4;
-	F55 <<= 4;
-
-	ADD_SUB(F48, F50);
-	ADD_SUB(F49, F51);
-	ADD_SUB(F52, F54);
-	ADD_SUB(F53, F55);
-
-	F53 <<= 2;
-	F54 <<= 4;
-	F55 <<= 6;
-
-	ADD_SUB(F48, F52);
-	ADD_SUB(F49, F53);
-	ADD_SUB(F50, F54);
-	ADD_SUB(F51, F55);
-
-	output[6] = Q_REDUCE(F48);
-	output[14] = Q_REDUCE(F49);
-	output[22] = Q_REDUCE(F50);
-	output[30] = Q_REDUCE(F51);
-	output[38] = Q_REDUCE(F52);
-	output[46] = Q_REDUCE(F53);
-	output[54] = Q_REDUCE(F54);
-	output[62] = Q_REDUCE(F55);
-
-	// Iteration 7:
-	ADD_SUB(F56, F57);
-	ADD_SUB(F58, F59);
-	ADD_SUB(F60, F61);
-	ADD_SUB(F62, F63);
-
-	F59 <<= 4;
-	F63 <<= 4;
-
-	ADD_SUB(F56, F58);
-	ADD_SUB(F57, F59);
-	ADD_SUB(F60, F62);
-	ADD_SUB(F61, F63);
-
-	F61 <<= 2;
-	F62 <<= 4;
-	F63 <<= 6;
-
-	ADD_SUB(F56, F60);
-	ADD_SUB(F57, F61);
-	ADD_SUB(F58, F62);
-	ADD_SUB(F59, F63);
-
-	output[7] = Q_REDUCE(F56);
-	output[15] = Q_REDUCE(F57);
-	output[23] = Q_REDUCE(F58);
-	output[31] = Q_REDUCE(F59);
-	output[39] = Q_REDUCE(F60);
-	output[47] = Q_REDUCE(F61);
-	output[55] = Q_REDUCE(F62);
-	output[63] = Q_REDUCE(F63);
+__device__ __forceinline__ void FFT(const unsigned char input[EIGHTH_N], swift_int32_t *output) {
+  swift_int32_t F0, F1, F2, F3, F4, F5, F6, F7, F8, F9,
+    F10, F11, F12, F13, F14, F15, F16, F17, F18, F19,
+    F20, F21, F22, F23, F24, F25, F26, F27, F28, F29,
+    F30, F31, F32, F33, F34, F35, F36, F37, F38, F39,
+    F40, F41, F42, F43, F44, F45, F46, F47, F48, F49,
+    F50, F51, F52, F53, F54, F55, F56, F57, F58, F59,
+    F60, F61, F62, F63;
+
+  // First loop unrolling:
+  swift_int16_t *table = &(fftTable[input[0] << 3]);
+
+  F0  = table[0];
+  F8  = table[1];
+  F16 = table[2];
+  F24 = table[3];
+  F32 = table[4];
+  F40 = table[5];
+  F48 = table[6];
+  F56 = table[7];
+
+  table = &(fftTable[input[1] << 3]);
+
+  F1  = -60  * table[0];
+  F9  = -120 * table[1];
+  F17 = 17   * table[2];
+  F25 = 34   * table[3];
+  F33 = 68   * table[4];
+  F41 = -121 * table[5];
+  F49 = 15   * table[6];
+  F57 = 30   * table[7];
+
+  table = &(fftTable[input[2] << 3]);
+
+  F2  = -35  * table[0];
+  F10 = 44   * table[1];
+  F18 = -70  * table[2];
+  F26 = 88   * table[3];
+  F34 = 117  * table[4];
+  F42 = -81  * table[5];
+  F50 = -23  * table[6];
+  F58 = 95   * table[7];
+
+  table = &(fftTable[input[3] << 3]);
+
+  F3  = 44   * table[0];
+  F11 = 117  * table[1];
+  F19 = 95   * table[2];
+  F27 = -92  * table[3];
+  F35 = -11  * table[4];
+  F43 = 35   * table[5];
+  F51 = -88  * table[6];
+  F59 = 23   * table[7];
+
+  table = &(fftTable[input[4] << 3]);
+
+  F4  = 42   * table[0];
+  F12 = 72   * table[1];
+  F20 = 50   * table[2];
+  F28 = 49   * table[3];
+  F36 = 84   * table[4];
+  F44 = -113 * table[5];
+  F52 = 100  * table[6];
+  F60 = 98   * table[7];
+
+  table = &(fftTable[input[5] << 3]);
+
+  F5  = 50   * table[0];
+  F13 = 98   * table[1];
+  F21 = 79   * table[2];
+  F29 = 124  * table[3];
+  F37 = 58   * table[4];
+  F45 = 52   * table[5];
+  F53 = -42  * table[6];
+  F61 = 113  * table[7];
+
+  table = &(fftTable[input[6] << 3]);
+
+  F6  = 72   * table[0];
+  F14 = 84   * table[1];
+  F22 = 98   * table[2];
+  F30 = -57  * table[3];
+  F38 = 62   * table[4];
+  F46 = -99  * table[5];
+  F54 = 13   * table[6];
+  F62 = 58   * table[7];
+
+  table = &(fftTable[input[7] << 3]);
+
+  F7  = 49   * table[0];
+  F15 = -57  * table[1];
+  F23 = 124  * table[2];
+  F31 = 118  * table[3];
+  F39 = 104  * table[4];
+  F47 = -100 * table[5];
+  F55 = -62  * table[6];
+  F63 = -59  * table[7];
+
+  // Second loop unrolling:
+  // Iteration 0:
+  ADD_SUB(F0, F1);
+  ADD_SUB(F2, F3);
+  ADD_SUB(F4, F5);
+  ADD_SUB(F6, F7);
+
+  F3 <<= 4;
+  F7 <<= 4;
+
+  ADD_SUB(F0, F2);
+  ADD_SUB(F1, F3);
+  ADD_SUB(F4, F6);
+  ADD_SUB(F5, F7);
+
+  F5 <<= 2;
+  F6 <<= 4;
+  F7 <<= 6;
+
+  ADD_SUB(F0, F4);
+  ADD_SUB(F1, F5);
+  ADD_SUB(F2, F6);
+  ADD_SUB(F3, F7);
+
+  output[0] = Q_REDUCE(F0);
+  output[8] = Q_REDUCE(F1);
+  output[16] = Q_REDUCE(F2);
+  output[24] = Q_REDUCE(F3);
+  output[32] = Q_REDUCE(F4);
+  output[40] = Q_REDUCE(F5);
+  output[48] = Q_REDUCE(F6);
+  output[56] = Q_REDUCE(F7);
+
+  // Iteration 1:
+  ADD_SUB(F8, F9);
+  ADD_SUB(F10, F11);
+  ADD_SUB(F12, F13);
+  ADD_SUB(F14, F15);
+
+  F11 <<= 4;
+  F15 <<= 4;
+
+  ADD_SUB(F8, F10);
+  ADD_SUB(F9, F11);
+  ADD_SUB(F12, F14);
+  ADD_SUB(F13, F15);
+
+  F13 <<= 2;
+  F14 <<= 4;
+  F15 <<= 6;
+
+  ADD_SUB(F8, F12);
+  ADD_SUB(F9, F13);
+  ADD_SUB(F10, F14);
+  ADD_SUB(F11, F15);
+
+  output[1] = Q_REDUCE(F8);
+  output[9] = Q_REDUCE(F9);
+  output[17] = Q_REDUCE(F10);
+  output[25] = Q_REDUCE(F11);
+  output[33] = Q_REDUCE(F12);
+  output[41] = Q_REDUCE(F13);
+  output[49] = Q_REDUCE(F14);
+  output[57] = Q_REDUCE(F15);
+
+  // Iteration 2:
+  ADD_SUB(F16, F17);
+  ADD_SUB(F18, F19);
+  ADD_SUB(F20, F21);
+  ADD_SUB(F22, F23);
+
+  F19 <<= 4;
+  F23 <<= 4;
+
+  ADD_SUB(F16, F18);
+  ADD_SUB(F17, F19);
+  ADD_SUB(F20, F22);
+  ADD_SUB(F21, F23);
+
+  F21 <<= 2;
+  F22 <<= 4;
+  F23 <<= 6;
+
+  ADD_SUB(F16, F20);
+  ADD_SUB(F17, F21);
+  ADD_SUB(F18, F22);
+  ADD_SUB(F19, F23);
+
+  output[2] = Q_REDUCE(F16);
+  output[10] = Q_REDUCE(F17);
+  output[18] = Q_REDUCE(F18);
+  output[26] = Q_REDUCE(F19);
+  output[34] = Q_REDUCE(F20);
+  output[42] = Q_REDUCE(F21);
+  output[50] = Q_REDUCE(F22);
+  output[58] = Q_REDUCE(F23);
+
+  // Iteration 3:
+  ADD_SUB(F24, F25);
+  ADD_SUB(F26, F27);
+  ADD_SUB(F28, F29);
+  ADD_SUB(F30, F31);
+
+  F27 <<= 4;
+  F31 <<= 4;
+
+  ADD_SUB(F24, F26);
+  ADD_SUB(F25, F27);
+  ADD_SUB(F28, F30);
+  ADD_SUB(F29, F31);
+
+  F29 <<= 2;
+  F30 <<= 4;
+  F31 <<= 6;
+
+  ADD_SUB(F24, F28);
+  ADD_SUB(F25, F29);
+  ADD_SUB(F26, F30);
+  ADD_SUB(F27, F31);
+
+  output[3] = Q_REDUCE(F24);
+  output[11] = Q_REDUCE(F25);
+  output[19] = Q_REDUCE(F26);
+  output[27] = Q_REDUCE(F27);
+  output[35] = Q_REDUCE(F28);
+  output[43] = Q_REDUCE(F29);
+  output[51] = Q_REDUCE(F30);
+  output[59] = Q_REDUCE(F31);
+
+  // Iteration 4:
+  ADD_SUB(F32, F33);
+  ADD_SUB(F34, F35);
+  ADD_SUB(F36, F37);
+  ADD_SUB(F38, F39);
+
+  F35 <<= 4;
+  F39 <<= 4;
+
+  ADD_SUB(F32, F34);
+  ADD_SUB(F33, F35);
+  ADD_SUB(F36, F38);
+  ADD_SUB(F37, F39);
+
+  F37 <<= 2;
+  F38 <<= 4;
+  F39 <<= 6;
+
+  ADD_SUB(F32, F36);
+  ADD_SUB(F33, F37);
+  ADD_SUB(F34, F38);
+  ADD_SUB(F35, F39);
+
+  output[4] = Q_REDUCE(F32);
+  output[12] = Q_REDUCE(F33);
+  output[20] = Q_REDUCE(F34);
+  output[28] = Q_REDUCE(F35);
+  output[36] = Q_REDUCE(F36);
+  output[44] = Q_REDUCE(F37);
+  output[52] = Q_REDUCE(F38);
+  output[60] = Q_REDUCE(F39);
+
+  // Iteration 5:
+  ADD_SUB(F40, F41);
+  ADD_SUB(F42, F43);
+  ADD_SUB(F44, F45);
+  ADD_SUB(F46, F47);
+
+  F43 <<= 4;
+  F47 <<= 4;
+
+  ADD_SUB(F40, F42);
+  ADD_SUB(F41, F43);
+  ADD_SUB(F44, F46);
+  ADD_SUB(F45, F47);
+
+  F45 <<= 2;
+  F46 <<= 4;
+  F47 <<= 6;
+
+  ADD_SUB(F40, F44);
+  ADD_SUB(F41, F45);
+  ADD_SUB(F42, F46);
+  ADD_SUB(F43, F47);
+
+  output[5] = Q_REDUCE(F40);
+  output[13] = Q_REDUCE(F41);
+  output[21] = Q_REDUCE(F42);
+  output[29] = Q_REDUCE(F43);
+  output[37] = Q_REDUCE(F44);
+  output[45] = Q_REDUCE(F45);
+  output[53] = Q_REDUCE(F46);
+  output[61] = Q_REDUCE(F47);
+
+  // Iteration 6:
+  ADD_SUB(F48, F49);
+  ADD_SUB(F50, F51);
+  ADD_SUB(F52, F53);
+  ADD_SUB(F54, F55);
+
+  F51 <<= 4;
+  F55 <<= 4;
+
+  ADD_SUB(F48, F50);
+  ADD_SUB(F49, F51);
+  ADD_SUB(F52, F54);
+  ADD_SUB(F53, F55);
+
+  F53 <<= 2;
+  F54 <<= 4;
+  F55 <<= 6;
+
+  ADD_SUB(F48, F52);
+  ADD_SUB(F49, F53);
+  ADD_SUB(F50, F54);
+  ADD_SUB(F51, F55);
+
+  output[6] = Q_REDUCE(F48);
+  output[14] = Q_REDUCE(F49);
+  output[22] = Q_REDUCE(F50);
+  output[30] = Q_REDUCE(F51);
+  output[38] = Q_REDUCE(F52);
+  output[46] = Q_REDUCE(F53);
+  output[54] = Q_REDUCE(F54);
+  output[62] = Q_REDUCE(F55);
+
+  // Iteration 7:
+  ADD_SUB(F56, F57);
+  ADD_SUB(F58, F59);
+  ADD_SUB(F60, F61);
+  ADD_SUB(F62, F63);
+
+  F59 <<= 4;
+  F63 <<= 4;
+
+  ADD_SUB(F56, F58);
+  ADD_SUB(F57, F59);
+  ADD_SUB(F60, F62);
+  ADD_SUB(F61, F63);
+
+  F61 <<= 2;
+  F62 <<= 4;
+  F63 <<= 6;
+
+  ADD_SUB(F56, F60);
+  ADD_SUB(F57, F61);
+  ADD_SUB(F58, F62);
+  ADD_SUB(F59, F63);
+
+  output[7] = Q_REDUCE(F56);
+  output[15] = Q_REDUCE(F57);
+  output[23] = Q_REDUCE(F58);
+  output[31] = Q_REDUCE(F59);
+  output[39] = Q_REDUCE(F60);
+  output[47] = Q_REDUCE(F61);
+  output[55] = Q_REDUCE(F62);
+  output[63] = Q_REDUCE(F63);
+}
+
+__device__ __forceinline__ void
+SWIFFTFFT(const unsigned char *input, int m, swift_int32_t *output) {
+  int i;
+
+  FFT(input, output);
+  input += EIGHTH_N;
+  output += N;
+
+#pragma unroll 1
+  for (i = 1; i < m - 1; i++, input += EIGHTH_N, output += N)
+    FFT(input, output);
+
+  FFT(input, output);
 }
 
 
-__device__ __forceinline__ void SWIFFTFFT(const unsigned char *input, int m, swift_int32_t *output)
-{
-	int i;
+__device__ void
+SWIFFTSum(const swift_int32_t *input, int m, unsigned char *output, const swift_int16_t *a) {
+  int i, j;
+  swift_int32_t result[N];
+  register swift_int16_t carry = 0;
 
-	FFT(input, output);
-	input += EIGHTH_N;
-	output += N;
+  for (j = 0; j < N; ++j) {
+    register swift_int32_t sum = 0;
+    const register swift_int32_t *f = input + j;
+    const register swift_int16_t *k = a + j;
 
-	#pragma unroll 1
-	for (i = 1; i < m - 1; i++, input += EIGHTH_N, output += N) FFT(input, output);
+    for (i = 0; i < m; i++, f += N,k += N) {
+      sum += (*f) * (*k);
+    }
 
-	FFT(input, output);
+    result[j] = ((FIELD_SIZE << 22) + sum) % FIELD_SIZE;
+  }
+
+  for (j = 0; j < 8; ++j) {
+    int register carryBit = TranslateToBase256(result + (j << 3), output + (j << 3));
+    carry |= carryBit << j;
+  }
+
+  output[N] = carry;
 }
 
 
-__device__ void SWIFFTSum(const swift_int32_t *input, int m, unsigned char *output, const swift_int16_t *a)
-{
-	int i, j;
-	swift_int32_t result[N];
-	register swift_int16_t carry = 0;
+__device__ __forceinline__ void
+ComputeSingleSWIFFTX(unsigned char input[SWIFFTX_INPUT_BLOCK_SIZE], unsigned char output[SWIFFTX_OUTPUT_BLOCK_SIZE], unsigned char S_SBox[256]) {
+  int i;
+  swift_int32_t fftOut[N * M];
+  unsigned char intermediate[N * 3 + 8];
+  unsigned char carry[3];
 
-	for (j = 0; j < N; ++j)
-	{
-		register swift_int32_t sum = 0;
-		const register swift_int32_t *f = input + j;
-		const register swift_int16_t *k = a + j;
+  SWIFFTFFT(input, M, fftOut);
 
-		for (i = 0; i < m; i++, f += N,k += N)
-		{
-			sum += (*f) * (*k);
-		}
+#pragma unroll 1
+  for (int r = 0; r < 3; r++) {
+    SWIFFTSum(fftOut, M, intermediate + (r * N), As + r * (M * N));
+    carry[r] = intermediate[(r + 1) * N];
+  }
 
-		result[j] = ((FIELD_SIZE << 22) + sum) % FIELD_SIZE;
-	}
+  intermediate[3 * N] = carry[0];
+  intermediate[(3 * N) + 1] = carry[1];
+  intermediate[(3 * N) + 2] = carry[2];
 
-	for (j = 0; j < 8; ++j)
-	{
-		int register carryBit = TranslateToBase256(result + (j << 3), output + (j << 3));
-		carry |= carryBit << j;
-	}
+  __syncthreads();
+#pragma unroll
+  for (i = 0; i < (3 * N) + 3; ++i)
+    intermediate[i] = S_SBox[intermediate[i]];
 
-	output[N] = carry;
+#pragma unroll
+  for (i = (3 * N) + 3; i < (3 * N) + 8; ++i)
+    intermediate[i] = 0x7d;
+
+  SWIFFTFFT(intermediate, 3 * (N/8) + 1, fftOut);
+  SWIFFTSum(fftOut,       3 * (N/8) + 1, output, As);
 }
 
 
-__device__ __forceinline__ void ComputeSingleSWIFFTX(unsigned char input[SWIFFTX_INPUT_BLOCK_SIZE], unsigned char output[SWIFFTX_OUTPUT_BLOCK_SIZE], unsigned char S_SBox[256])
-{
-	int i;
-	swift_int32_t fftOut[N * M];
-	unsigned char intermediate[N * 3 + 8];
-	unsigned char carry[3];
+__global__ void __launch_bounds__(128,3)
+  swifftx512_gpu_hash_64(int threads, uint32_t *g_hash, uint32_t *g_hash1, uint32_t *g_hash2, uint32_t *g_hash3) {
+  int thread = (blockDim.x * blockIdx.x + threadIdx.x);
+  __shared__ unsigned char S_SBox[256];
+  if (threadIdx.x < 128) {
+    S_SBox[threadIdx.x] = SBox[threadIdx.x];
+    S_SBox[threadIdx.x + 128] = SBox[threadIdx.x + 128];
+  }
 
-	SWIFFTFFT(input, M, fftOut);
-
-	#pragma unroll 1
-	for (int r = 0; r < 3; r++) {
-		SWIFFTSum(fftOut, M, intermediate + (r * N), As + r * (M * N));
-		carry[r] = intermediate[(r + 1) * N];
-	}
-
-	intermediate[3 * N] = carry[0];
-	intermediate[(3 * N) + 1] = carry[1];
-	intermediate[(3 * N) + 2] = carry[2];
-
-	__syncthreads();
-	#pragma unroll
-	for (i = 0; i < (3 * N) + 3; ++i) intermediate[i] = S_SBox[intermediate[i]];
-
-	#pragma unroll
-	for (i = (3 * N) + 3; i < (3 * N) + 8; ++i) intermediate[i] = 0x7d;
-
-	SWIFFTFFT(intermediate, 3 * (N/8) + 1, fftOut);
-	SWIFFTSum(fftOut,       3 * (N/8) + 1, output, As);
-}
-
-
-__global__ void __launch_bounds__(128,3) swifftx512_gpu_hash_64(int threads, uint32_t *g_hash, uint32_t *g_hash1, uint32_t *g_hash2, uint32_t *g_hash3)
-{
-	int thread = (blockDim.x * blockIdx.x + threadIdx.x);
-	__shared__ unsigned char S_SBox[256];
-	if (threadIdx.x < 128) {
-		S_SBox[threadIdx.x] = SBox[threadIdx.x];
-		S_SBox[threadIdx.x + 128] = SBox[threadIdx.x + 128];
-	}
-
-	if (thread < threads) {
+  if (thread < threads) {
     uint32_t in[64];
     uint32_t* inout = &g_hash [thread<<4];
     uint32_t* in1   = &g_hash1[thread<<4];
     uint32_t* in2   = &g_hash2[thread<<4];
     uint32_t* in3   = &g_hash3[thread<<4];
 
-    #pragma unroll
-		for (int i = 0; i < 16; i++) {
-			in[i     ] = inout[i];
-			in[i + 16] = in1  [i];
-			in[i + 32] = in2  [i];
-			in[i + 48] = in3  [i];
-		}
+#pragma unroll
+    for (int i = 0; i < 16; i++) {
+      in[i     ] = inout[i];
+      in[i + 16] = in1  [i];
+      in[i + 32] = in2  [i];
+      in[i + 48] = in3  [i];
+    }
 
-		ComputeSingleSWIFFTX((unsigned char*)in, (unsigned char*)in, S_SBox);
+    ComputeSingleSWIFFTX((unsigned char*)in, (unsigned char*)in, S_SBox);
 
-		#pragma unroll
-		for (int i = 0; i < 16; i++) inout[i] = in[i];
-	}
+#pragma unroll
+    for (int i = 0; i < 16; i++) inout[i] = in[i];
+  }
 }
 
 
-__host__ void swifftx512_cpu_hash_64(int thr_id, int threads, uint32_t *d_hash, uint32_t *d_hash1, uint32_t *d_hash2, uint32_t *d_hash3) {
-	const int threadsperblock = 128;
-	dim3 grid(threads/threadsperblock);
-	dim3 block(threadsperblock);
-	swifftx512_gpu_hash_64<<<grid, block>>>(threads, d_hash, d_hash1, d_hash2, d_hash3);
+__host__ void
+swifftx512_cpu_hash_64(int thr_id, int threads, uint32_t *d_hash, uint32_t *d_hash1, uint32_t *d_hash2, uint32_t *d_hash3) {
+  const int threadsperblock = 128;
+  dim3 grid(threads/threadsperblock);
+  dim3 block(threadsperblock);
+  swifftx512_gpu_hash_64<<<grid, block>>>(threads, d_hash, d_hash1, d_hash2, d_hash3);
 }
